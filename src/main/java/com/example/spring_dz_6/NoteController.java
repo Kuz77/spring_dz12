@@ -1,9 +1,13 @@
 package com.example.spring_dz_6;
 
+import com.example.spring_dz_6.events.NoteAddedEvent;
+import com.example.spring_dz_6.services.FileGateWay;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -11,15 +15,25 @@ import java.util.Optional;
 @RequestMapping("/notes")
 public class NoteController {
     private final NoteService noteService;
+    private final FileGateWay fileGateWay;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
-    public NoteController(NoteService noteService) {
+    public NoteController(NoteService noteService, FileGateWay fileGateWay, ApplicationEventPublisher eventPublisher) {
         this.noteService = noteService;
+        this.fileGateWay = fileGateWay;
+        this.eventPublisher = eventPublisher;
     }
 
     @PostMapping
     public ResponseEntity<Note> addNote(@RequestBody Note note) {
         Note addedNote = noteService.addOrUpdate(note);
+
+        fileGateWay.writeToFile(note.getTitle() + ".txt", note.toString());
+
+        // Публикация события
+        eventPublisher.publishEvent(new NoteAddedEvent(this, addedNote));
+
         return new ResponseEntity<>(addedNote, HttpStatus.CREATED);
     }
 
@@ -56,6 +70,7 @@ public class NoteController {
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 }
+
 
 
 
